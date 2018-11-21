@@ -1,0 +1,88 @@
+import re
+
+
+class CheckXML(object):
+    class Queue:
+        def __init__(self, l=None):
+            if l is None:
+                self._list = []
+            else:
+                self._list = l
+
+        def put(self, value):
+            self._list.append(value)
+
+        def pop(self):
+            value = self._list[0]
+            del self._list[0]
+            return value
+
+        def head(self):
+            return not self._list.__len__() == 0 and self._list[0] or None
+
+        def empty(self):
+            return self._list.__len__() == 0
+
+    def __init__(self, check_file, self_set=set()):
+        self._check_file = check_file
+        self._file = open(self._check_file, 'r')
+        self._text = self._file.read()
+        self._self_set = set(self_set)
+        self._head_regex = r'\<([^\/]+?)\>'
+        self._head_matcher = re.compile(self._head_regex)
+        self._tail_regex = r'\<\/([^\/]+?)\>'
+        self._tail_matcher = re.compile(self._tail_regex)
+        self._self_regex = r'\<([^(\/\<\>)]*?)\/\>'
+        self._self_matcher = re.compile(self._self_regex)
+        self._check_result = None
+        self._tail = None
+        self._head = None
+        self._self = None
+
+    def check(self):
+        self._head = self._head_matcher.findall(self._text)
+        self._tail = self._tail_matcher.findall(self._text)
+        self._self = self._self_matcher.findall(self._text)
+        if self._head.__len__() == 0 or self._tail.__len__() == 0:
+            self._check_result = False
+            return
+        if self._tail.__len__() != self._head.__len__():
+            self._check_result = False
+            return
+        queue = self.Queue()
+        head_index = tail_index = 0
+        while tail_index >= len(self._tail):
+            if self._head[head_index] == self._tail[tail_index]:
+                pass
+            elif queue.head() == self._tail[tail_index]:
+                queue.pop()
+            else:
+                queue.put(self._head[head_index])
+            head_index += 1
+            tail_index += 1
+        self._check_result = queue.empty() and set(self._self).issubset(self._self_set)
+
+    def get_head(self):
+        return self._head
+
+    def get_tails(self):
+        return self._tail
+
+    def get_self(self):
+        return self._self
+
+    def set_self_set(self, self_set):
+        self._self_set = self_set
+
+    def get_self_set(self):
+        return self._self_set
+
+    def is_rule(self):
+        if self._check_result is None:
+            self.check()
+            self._file.close()
+        return self._check_result
+
+
+if __name__ == '__main__':
+    print(CheckXML(check_file='test.html', self_set=['br']).is_rule())
